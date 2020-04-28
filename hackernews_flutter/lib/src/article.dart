@@ -8,8 +8,9 @@ abstract class Article implements Built<Article, ArticleBuilder> {
   int get id;
   @nullable
   bool get deleted;
-  @nullable
-  String get type; // "job", "story", "comment", "poll", or "pollopt".
+  ///Type of articles
+  /// "job", "story", "comment", "poll", or "pollopt".
+  String get type; 
   @nullable
   String get by;
   @nullable
