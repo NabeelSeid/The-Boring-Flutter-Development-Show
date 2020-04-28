@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:hackernews_flutter/src/json_parsing.dart';
 import 'src/article.dart';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 void main() => runApp(MyApp());
@@ -27,7 +29,23 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<Article> _articles = articles;
+  List<int> _articles = [
+    22999738,
+    22998668,
+    23000628,
+    22997193,
+    22994420,
+    22999096,
+    22998423,
+    22999128,
+    22996374
+  ];
+
+  Future<Article> _getArticle(int id) async {
+    final storyUrl = 'https://hacker-news.firebaseio.com/v0/item/${id}.json';
+    final storyRes = await http.get(storyUrl);
+    return parseArticle(storyRes.body);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,41 +53,42 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Builder(builder: (BuildContext context) {
-        return RefreshIndicator(
-          onRefresh: () async {
-            await Future.delayed(const Duration(seconds: 1));
-            setState(() {
-              _articles.removeAt(0);
-            });
-            Scaffold.of(context).showSnackBar(SnackBar(
-              content: Text("Removed: ${articles[0].text}"),
-            ));
-          },
-          child: Center(
-            child: ListView(
-              children: _articles.map(_buildItem).toList(),
-            ),
-          ),
-        );
-      }),
+      body: ListView(
+        children: _articles
+            .map((item) => FutureBuilder<Article>(
+                future: _getArticle(item),
+                builder: (_, AsyncSnapshot<Article> snapshot) {
+                  if (snapshot.connectionState == ConnectionState.done) {
+                    if (snapshot.hasData) {
+                      return _buildItem(snapshot.data);
+                    } else {
+                      return Text('No Data');
+                    }
+                  } else {
+                    return Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+                }))
+            .toList(),
+      ),
     );
   }
 
   Widget _buildItem(Article e) => Padding(
-        key: Key(e.text),
+        key: Key(e.title),
         padding: const EdgeInsets.all(16.0),
         child: ExpansionTile(
-          title: Text(e.text),
+          title: Text(e.title),
           children: <Widget>[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: <Widget>[
-                Text("${e.commentsScore} comments"),
+                Text("${e.descendants} comments"),
                 IconButton(
                     icon: Icon(Icons.launch),
                     onPressed: () async {
-                      if (await canLaunch(e.domain)) launch(e.domain);
+                      if (await canLaunch(e.url)) launch(e.url);
                     })
               ],
             )

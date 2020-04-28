@@ -1,5 +1,6 @@
 import 'package:hackernews_flutter/src/json_parsing.dart';
 import 'package:test/test.dart';
+import 'package:http/http.dart' as http;
 
 main() {
   test("parses topstories.json", () {
@@ -14,5 +15,23 @@ main() {
         """{"by":"dhouston","descendants":71,"id":8863,"score":104,"time":1175714200,"title":"My YC app: Dropbox - Throw away your USB drive","type":"story","url":"http://www.getdropbox.com/u/2/screencast.html"}""";
 
     expect(parseArticle(jsonString).by, "dhouston");
+  });
+
+  test("parse item.json over a network", () async {
+    final url = 'https://hacker-news.firebaseio.com/v0/beststories.json';
+    final res = await http.get(url);
+    if (res.statusCode == 200) {
+      final idList = parseTopStories(res.body);
+      if (idList.isNotEmpty) {
+        final storyUrl =
+            'https://hacker-news.firebaseio.com/v0/item/${idList.first}.json';
+        final storyRes = await http.get(storyUrl);
+        if (storyRes.statusCode == 200) {
+          final article = parseArticle(storyRes.body);
+
+          expect(article.by, "dhouston");
+        }
+      }
+    }
   });
 }
