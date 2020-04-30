@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:hackernews_flutter/src/json_parsing.dart';
+import 'package:hackernews_flutter/src/hn_bloc.dart';
 import 'src/article.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
-void main() => runApp(MyApp());
+void main() {
+  HackerNewsBloc hnBloc = HackerNewsBloc();
+  runApp(MyApp(bloc: hnBloc));
+}
 
 class MyApp extends StatelessWidget {
+  final HackerNewsBloc bloc;
+
+  MyApp({Key key, this.bloc}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -14,63 +20,42 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyHomePage(title: 'Flutter Demo Home Page', bloc: bloc),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
-
   final String title;
+  final HackerNewsBloc bloc;
+
+  MyHomePage({Key key, this.title, this.bloc}) : super(key: key);
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<int> _articles = [
-    22999738,
-    22998668,
-    23000628,
-    22997193,
-    22994420,
-    22999096,
-    22998423,
-    22999128,
-    22996374
-  ];
-
-  Future<Article> _getArticle(int id) async {
-    final storyUrl = 'https://hacker-news.firebaseio.com/v0/item/${id}.json';
-    final storyRes = await http.get(storyUrl);
-    return parseArticle(storyRes.body);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: ListView(
-        children: _articles
-            .map((item) => FutureBuilder<Article>(
-                future: _getArticle(item),
-                builder: (_, AsyncSnapshot<Article> snapshot) {
-                  if (snapshot.connectionState == ConnectionState.done) {
-                    if (snapshot.hasData) {
-                      return _buildItem(snapshot.data);
-                    } else {
-                      return Text('No Data');
-                    }
-                  } else {
-                    return Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  }
-                }))
-            .toList(),
+      body: StreamBuilder<List<Article>>(
+        stream: widget.bloc.articles,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return ListView(
+              children:
+                  snapshot.data.map((article) => _buildItem(article)).toList(),
+            );
+          } else if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else {
+            return Text('No Data');
+          }
+        },
       ),
     );
   }
